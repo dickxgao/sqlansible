@@ -1,0 +1,24 @@
+---
+- hosts: localhost
+ 
+  tasks:
+  
+  - name: create the sqlbackup folder
+    file: path=/etc/ansible/sqlbackup state=directory
+  
+  - name: dump all mysql databases and using the current date and hour as the name
+    mysql_db:
+          name: all
+          state: dump
+          target: /etc/ansible/sqlbackup/testdb{{ansible_date_time.date}}{{ansible_date_time.hour}}.sql
+
+
+# backup1 is under the test hosts group
+- hosts: test
+  
+  tasks: 
+  
+  - name: sync folders 
+    copy:
+      src: /etc/ansible/sqlbackup
+      dest: /

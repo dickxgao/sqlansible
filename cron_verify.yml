@@ -1,0 +1,12 @@
+- hosts: localhost
+
+
+  tasks:
+
+  - name: cron job on the sql verify
+    cron: 
+      name: run at 11:55pm every day, about 20 minutes after the database backup
+      hour: "23"
+      minute: "55"
+      job: "ansible-playbook /etc/ansible/verifysql.yml"
+      state: present 

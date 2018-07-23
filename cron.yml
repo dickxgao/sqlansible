@@ -1,0 +1,12 @@
+- hosts: localhost
+
+
+  tasks:
+
+  - name: cron job
+    cron: 
+      name: run at 11:33pm every day
+      hour: "23"
+      minute: "33"
+      job: "ansible-playbook /etc/ansible/backupmysql.yml"
+      state: present 

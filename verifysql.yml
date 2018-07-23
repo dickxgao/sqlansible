@@ -1,0 +1,56 @@
+---
+- hosts: test
+
+  tasks: 
+    
+    - block:
+
+
+       - name: remove all current databases except for the ones installed by default    
+         shell: mysql -uroot -e "show databases" | grep -v Database | grep -v mysql | grep -v information_schema | gawk '{print "drop database " $1 "; select sleep (0.1);"}' | mysql
+
+       - name: restore the database, it finds the latest modified .sql file in the sqlbackup folder located in the root folder, will error out when unable to restore it
+         shell: mysql < /sqlbackup/$(ls -t /sqlbackup/ | grep .sql | head -n1) 
+ 
+       - name: fails the playbook if the backup.sql file is size 0
+         shell: stat -c %s /sqlbackup/$(ls -t /sqlbackup/ | grep .sql | head -n1)
+         register: filesize
+  
+       - debug: var=filesize.stdout
+
+       - fail:
+           msg: "the sql file is empty!"
+         when: filesize.stdout == "0"
+
+       - name: make sure log file exists
+         file: 
+           path: "/sqlbackup/sqlbackup.log"
+           state: touch
+
+       - name: make the log file neater with dates
+         shell: echo -e "\n" "\n" "\n" $(date) >> /sqlbackup/sqlbackup.log 
+
+       - name: run a check all database to check for integrety and output the result into the log file
+         shell: mysqlcheck --all-databases >> /sqlbackup/sqlbackup.log
+
+       - name: scan the log file, make sure no error is mentioned
+         #i'm not sure what mysqlcheck would output for a corrupted database, quick google involves a line that says error: so i'll work with that
+         shell: cat /sqlbackup/sqlbackup.log
+         register: backuplog
+
+       - name: fails the playbook if the error string is detected in the log file
+         fail: 
+           msg: "error exists when doing mysqlcheck on the databases"
+         when: backuplog.stdout.find('error') != -1
+
+       - name: empty the database again
+         shell: mysql -uroot -e "show databases" | grep -v Database | grep -v mysql | grep -v information_schema | gawk '{print "drop database " $1 "; select sleep (0.1);"}' | mysql   
+
+
+      rescue: 
+       - name: do a failure notification, either via email, slack or w.e. This project will just output a message
+         debug: 
+           msg: " mysql backup has an error!!!"
+ 
+
+ 
